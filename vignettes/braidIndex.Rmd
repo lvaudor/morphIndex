@@ -1,0 +1,106 @@
+---
+title: "braidIndex package"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{braidIndex package}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup, message=FALSE, warning=FALSE}
+library(braidIndex)
+library(dplyr)
+options(scipen = 9999, pillar.sigfig = 4)
+```
+
+# Format data
+
+Several datafiles must be provided **with the following format**:
+
+## rivdata (as many tables as there are distinct rivers/reaches considered)
+
+un tableau contenant une **liste des points** avec, en colonnes :
+
+- le **numéro de point**, 
+- les **mesures d'altitudes** et 
+- le **type d'unité paysagère** (eau, ripisylve, îles végétalisées, bancs végétalisés, bancs de sédiments).
+
+Une différence doit être réalisée entre la végétation pionnière et la végétation mature afin de prendre en compte de la végétation pionnière seulement. 
+
+La catégorie "Eau" doit contenir les chenaux en eau seulement présents dans la banque active, cela n'inclut pas les affluents.
+
+## Infos
+
+Pour traiter de multiples rivières ou tronçons, un **tableau contenant les informations sur les tronçons d'études et leurs bassins versants** est requis. Ce tableau est ici appelé "Infos". 
+    
+Le tableau doit contenir : 
+
+- le **nom de la rivière**, 
+- le **nom du tronçon**, 
+- l'**année des données**, 
+- la **superficie du bassin en km^2** et 
+- le **nom du fichier avec l'extension** 
+
+afin de charger automatiquement les fichiers dans la boucle de code et traiter tous les fichiers automatiquement.
+
+Les fichiers doivent être au format .txt et séparé par ;  
+
+```{r river_info}
+Infos=tibble::as_tibble(readxl::read_excel("../data-raw/Infos.xlsx")) %>% 
+  mutate(Year=as.factor(Year))
+Infos
+```
+
+# Apply function braidIndex() to one river:
+
+## Read and clean data with braidIndex_read():
+
+```{r read_drac}
+data_Drac=braidIndex_read(paste0("../data-raw/",Infos$File[1]))
+head(data_Drac)
+```
+
+## calculate indexes for one river/reach with braidIndex_one():
+
+```{r calc_drac}
+result_Drac=braidIndex_one(data_Drac,
+                           area=Infos$Area[1],
+                           points_space=Infos$Points_space[1])
+result_Drac
+```
+
+# Apply () to multiple rivers/reaches
+
+```{r}
+result=braidIndex(Infos,rel_path="../data-raw/")
+result
+```
+
+```{r plot_BRIstar,fig.width=8}
+braidIndex_plot(result,index="BRI", position=Year, color=River)
+```
+
+
+```{r plot_BRIstar,fig.width=8}
+braidIndex_plot(result,index="W", position=Year, color=River)
+```
+
+
+# References:
+
+When using this package, **please refer to the following article**:
+
+Devreux, L., Chapuis, M., Belletti, B., submitted. Hydromorphological analysis on restored Alpine braided rivers, *Geomorphology*.
+
+See also:
+
+- Liébault, F., Lallias‐Tacon, S., Cassel, M., Talaska, N., 2013. Long Profile Responses of Alpine Braided Rivers in SE France. *River Research and Applications* 29, 1253–1266. https://doi.org/10.1002/rra.2615
+- Piégay, H., Alber, A., Slater, L., Bourdin, L., 2009. Census and typology of braided rivers in the French Alps. *Aquatic Sciences* 71, 371–388. https://doi.org/10.1007/s00027-009-9220-4
+- Terrier, B., Piégay, H., Liébault, F., Dufour, S., Belletti, B., Le Lay, Y.-F., Marmonier, P., Comby, E., Tacon, S., Faton, J.-M., Gourhand, A., Marteau, B., Räpple, B., Wawrzyniak, V., 2019. *Les rivières en tresses - Eléments de connaissance (Guide), Eau & Connaissance*. Agence de l’eau Rhône Méditerranée Corse.
